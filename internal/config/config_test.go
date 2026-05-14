@@ -60,6 +60,9 @@ func TestLoadConfigAppliesDefaults(t *testing.T) {
 	if cfg.Log.File == "" {
 		t.Fatal("expected default log file")
 	}
+	if cfg.Server.MaxConcurrentRequests != 64 {
+		t.Fatalf("server max concurrent=%d", cfg.Server.MaxConcurrentRequests)
+	}
 }
 
 func TestLoadUnresolvedDoesNotRequireProviderAPIKey(t *testing.T) {
@@ -92,6 +95,18 @@ func TestResolveProviderProxyConfig(t *testing.T) {
 	provider := cfg.Providers["openai"]
 	if !provider.Proxy.Enabled || provider.Proxy.URL != "http://127.0.0.1:7897" {
 		t.Fatalf("proxy=%+v", provider.Proxy)
+	}
+}
+
+func TestProviderConcurrencyDefaults(t *testing.T) {
+	cfg := Config{Providers: map[string]ProviderConfig{
+		"openai": {Type: "openai-compatible", BaseURL: "https://api.openai.com", APIKey: "sk-direct"},
+	}}
+	if err := cfg.Resolve(); err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Providers["openai"].MaxConcurrentRequests; got != 16 {
+		t.Fatalf("provider max concurrent=%d", got)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"ccp/internal/anthropic"
 	"ccp/internal/config"
@@ -95,5 +96,28 @@ func TestMessagesStreaming(t *testing.T) {
 	}
 	if !strings.Contains(rec.Body.String(), "message_stop") {
 		t.Fatalf("body=%s", rec.Body.String())
+	}
+}
+
+func TestMessagesReturnsBusyWhenGlobalLimiterFull(t *testing.T) {
+	fp := &fakeProvider{resp: &anthropic.MessageResponse{ID: "msg_1", Type: "message", Role: "assistant", Model: "m"}}
+	global := newLimiter(1, time.Millisecond)
+	release, err := global.acquire(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	srv := &Server{
+		cfg:             &config.Config{Aliases: map[string]string{"haiku": "deepseek:model"}},
+		logger:          slog.Default(),
+		providers:       map[string]providers.Provider{"deepseek": fp},
+		globalLimiter:   global,
+		providerLimiter: map[string]*limiter{"deepseek": newLimiter(1, time.Millisecond)},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/v1/messages", strings.NewReader(`{"model":"haiku","messages":[{"role":"user","content":"hi"}]}`))
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 	}
 }

@@ -15,13 +15,16 @@ import (
 )
 
 type Server struct {
-	cfg       *config.Config
-	logger    *slog.Logger
-	providers map[string]providers.Provider
+	cfg             *config.Config
+	logger          *slog.Logger
+	providers       map[string]providers.Provider
+	globalLimiter   *limiter
+	providerLimiter map[string]*limiter
 }
 
 func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 	registry := map[string]providers.Provider{}
+	providerLimiters := map[string]*limiter{}
 	for name, providerCfg := range cfg.Providers {
 		pcfg := providers.Config{
 			Name:    name,
@@ -50,8 +53,15 @@ func New(cfg *config.Config, logger *slog.Logger) (*Server, error) {
 		default:
 			return nil, fmt.Errorf("provider %q: unknown type %q", name, providerCfg.Type)
 		}
+		providerLimiters[name] = newLimiter(providerCfg.MaxConcurrentRequests, 2*time.Second)
 	}
-	return &Server{cfg: cfg, logger: logger, providers: registry}, nil
+	return &Server{
+		cfg:             cfg,
+		logger:          logger,
+		providers:       registry,
+		globalLimiter:   newLimiter(cfg.Server.MaxConcurrentRequests, 2*time.Second),
+		providerLimiter: providerLimiters,
+	}, nil
 }
 
 func (s *Server) Handler() http.Handler {

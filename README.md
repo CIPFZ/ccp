@@ -36,6 +36,21 @@ providers:
 
 Set `proxy.enabled: false` or omit the block to connect directly.
 
+## Concurrency Protection
+
+CCP supports global and per-provider concurrency limits so a burst of Claude Code or subagent requests does not exhaust the local proxy process:
+
+```yaml
+server:
+  max_concurrent_requests: 64
+
+providers:
+  openai:
+    max_concurrent_requests: 16
+```
+
+When a limit is full, CCP waits briefly for capacity. If no slot becomes available, it returns `503 busy` instead of letting the proxy overload.
+
 Recommended local setup:
 
 ```powershell

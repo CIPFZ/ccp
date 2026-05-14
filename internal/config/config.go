@@ -21,8 +21,9 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Host                  string `yaml:"host"`
+	Port                  int    `yaml:"port"`
+	MaxConcurrentRequests int    `yaml:"max_concurrent_requests"`
 }
 
 type LogConfig struct {
@@ -37,12 +38,13 @@ type UsageConfig struct {
 }
 
 type ProviderConfig struct {
-	Type           string            `yaml:"type"`
-	BaseURL        string            `yaml:"base_url"`
-	APIKey         string            `yaml:"api_key"`
-	ResolvedAPIKey string            `yaml:"-"`
-	Proxy          ProxyConfig       `yaml:"proxy"`
-	Headers        map[string]string `yaml:"headers"`
+	Type                  string            `yaml:"type"`
+	BaseURL               string            `yaml:"base_url"`
+	APIKey                string            `yaml:"api_key"`
+	ResolvedAPIKey        string            `yaml:"-"`
+	Proxy                 ProxyConfig       `yaml:"proxy"`
+	MaxConcurrentRequests int               `yaml:"max_concurrent_requests"`
+	Headers               map[string]string `yaml:"headers"`
 }
 
 type ProxyConfig struct {
@@ -90,6 +92,9 @@ func (c *Config) ApplyDefaults() {
 	if c.Server.Port == 0 {
 		c.Server.Port = 8787
 	}
+	if c.Server.MaxConcurrentRequests == 0 {
+		c.Server.MaxConcurrentRequests = 64
+	}
 	if c.Log.Level == "" {
 		c.Log.Level = "info"
 	}
@@ -124,6 +129,12 @@ func (c *Config) Resolve() error {
 		}
 		if provider.Proxy.Enabled && provider.Proxy.URL == "" {
 			return fmt.Errorf("provider %q proxy.url is required when proxy.enabled is true", name)
+		}
+		if provider.MaxConcurrentRequests == 0 {
+			provider.MaxConcurrentRequests = 16
+		}
+		if provider.MaxConcurrentRequests < 0 {
+			return fmt.Errorf("provider %q max_concurrent_requests must be >= 0", name)
 		}
 		key, err := resolveAPIKey(provider.APIKey)
 		if err != nil {

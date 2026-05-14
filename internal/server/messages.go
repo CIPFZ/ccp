@@ -48,6 +48,15 @@ func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	releaseGlobal, err := s.globalLimiter.acquire(r.Context())
+	if err != nil {
+		status = http.StatusServiceUnavailable
+		requestErr = "server busy"
+		writeError(w, status, requestErr)
+		return
+	}
+	defer releaseGlobal()
+
 	var req anthropic.MessageRequest
 	decoder := json.NewDecoder(r.Body)
 	if err := decoder.Decode(&req); err != nil {
@@ -78,6 +87,16 @@ func (s *Server) handleMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	providerRoute := providers.Route(route)
+	if limiter := s.providerLimiter[route.Provider]; limiter != nil {
+		releaseProvider, err := limiter.acquire(r.Context())
+		if err != nil {
+			status = http.StatusServiceUnavailable
+			requestErr = fmt.Sprintf("provider %q busy", route.Provider)
+			writeError(w, status, requestErr)
+			return
+		}
+		defer releaseProvider()
+	}
 	usageRecord.Stream = req.Stream
 	if req.Stream {
 		body, contentType, err := provider.StreamMessages(r.Context(), providerRoute, req)

@@ -1,6 +1,7 @@
 server:
   host: 127.0.0.1
   port: 8787
+  max_concurrent_requests: 64
 
 log:
   level: info
@@ -21,6 +22,7 @@ providers:
     type: anthropic-compatible
     base_url: https://api.deepseek.com/anthropic
     api_key: ${DEEPSEEK_API_KEY}
+    max_concurrent_requests: 32
     proxy:
       enabled: false
 
@@ -28,6 +30,7 @@ providers:
     type: openai-compatible
     base_url: https://api.deepseek.com
     api_key: ${DEEPSEEK_API_KEY}
+    max_concurrent_requests: 32
     proxy:
       enabled: false
 
@@ -35,6 +38,7 @@ providers:
     type: openai-compatible
     base_url: https://api.openai.com
     api_key: ${OPENAI_API_KEY}
+    max_concurrent_requests: 16
     proxy:
       enabled: true
       url: http://127.0.0.1:7897
