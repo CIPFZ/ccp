@@ -1,0 +1,40 @@
+server:
+  host: 127.0.0.1
+  port: 8787
+
+log:
+  level: info
+  file: ~/.ccp/logs/ccp.log
+  prompt: false
+
+usage:
+  enabled: true
+  file: ~/.ccp/logs/usage.jsonl
+
+aliases:
+  haiku: deepseek-anthropic:deepseek-v4-flash
+  sonnet: deepseek-anthropic:deepseek-v4-pro
+  opus: openai:gpt-5.5
+
+providers:
+  deepseek-anthropic:
+    type: anthropic-compatible
+    base_url: https://api.deepseek.com/anthropic
+    api_key: ${DEEPSEEK_API_KEY}
+    proxy:
+      enabled: false
+
+  deepseek-openai:
+    type: openai-compatible
+    base_url: https://api.deepseek.com
+    api_key: ${DEEPSEEK_API_KEY}
+    proxy:
+      enabled: false
+
+  openai:
+    type: openai-compatible
+    base_url: https://api.openai.com
+    api_key: ${OPENAI_API_KEY}
+    proxy:
+      enabled: true
+      url: http://127.0.0.1:7897
